@@ -2,15 +2,26 @@ version: "3"
 
 services:
     monica-app: &app
-        image: php:8.1-fpm
+        build:
+            context: .
+            dockerfile: ./docker/php-fpm/Dockerfile
         volumes:
             - .:/var/www
         networks:
             - dokploy-network
         restart: always
+        env_file:
+            - ./.env
+        healthcheck:
+            test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
         depends_on:
-            - monica-mariadb
-            - monica-redis
+            monica-mariadb:
+                condition: service_healthy
+            monica-redis:
+                condition: service_healthy
     laravel.queue:
         <<: *app
         command: 'php artisan queue:work --sleep=10 --timeout=0 --tries=3 --queue=high,default,low'
@@ -37,12 +48,14 @@ services:
         networks:
             - dokploy-network
     monica-web:
-        image: nginx:latest
+        build:
+            context: .
+            dockerfile: ./docker/nginx/Dockerfile
         volumes:
-            - .:/var/www
-            - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+            - monica-storage:/var/www/storage:ro
         depends_on:
-            - monica-app
+            monica-app:
+                condition: service_healthy
         ports:
             - 80
         networks:
