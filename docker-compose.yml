@@ -1,5 +1,3 @@
-version: "3"
-
 services:
     monica-app: &app
         build:
@@ -88,3 +86,4 @@ volumes:
     monica-mariadb:
     monica-redis:
     monica-meilisearch:
+    monica-storage:
