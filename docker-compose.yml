@@ -16,10 +16,7 @@ services:
             timeout: 5s
             retries: 3
         depends_on:
-            monica-mariadb:
-                condition: service_healthy
-            monica-redis:
-                condition: service_healthy
+            - monica-mariadb
     laravel.queue:
         <<: *app
         command: 'php artisan queue:work --sleep=10 --timeout=0 --tries=3 --queue=high,default,low'
