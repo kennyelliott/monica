@@ -64,12 +64,6 @@ services:
         networks:
             - dokploy-network
         restart: always
-        labels:
-            - "traefik.enable=true"
-            - "traefik.http.routers.monicahq.rule=Host(`monicahq.neoserve.com`)"
-            - "traefik.http.routers.monicahq.entrypoints=websecure"
-            - "traefik.http.routers.monicahq.tls.certResolver=letsencrypt"
-            - "traefik.http.services.monicahq.loadbalancer.server.port=80"
     monica-memcached:
         image: memcached:alpine
         restart: always
