@@ -1,16 +1,12 @@
-FROM php:8.4-fpm-alpine
+FROM php:8.4-fpm-alpine AS base
 
 WORKDIR /var/www
-
-COPY . /var/www
 
 RUN apk update && apk add --no-cache icu-dev
 
 RUN docker-php-ext-install intl pdo pdo_mysql bcmath
 
-
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Download and install php-fpm health check script
 RUN curl -o /usr/local/bin/php-fpm-healthcheck \
@@ -31,6 +27,13 @@ RUN sed -i '/\[www\]/a pm.status_path = /status' /usr/local/etc/php-fpm.d/zz-doc
 # Update the variables_order to include E (for ENV)
 #RUN sed -i 's/variables_order = "GPCS"/variables_order = "EGPCS"/' "$PHP_INI_DIR/php.ini"
 
+FROM base AS production
+
+WORKDIR /var/www
+
+COPY . /var/www
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
 # Ensure correct permissions
 RUN chown -R www-data:www-data /var/www
 
