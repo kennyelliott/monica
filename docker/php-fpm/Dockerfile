@@ -1,4 +1,4 @@
-FROM php:8.4-fpm-alpine AS base
+FROM php:8.4-fpm-alpine
 
 WORKDIR /var/www
 
@@ -26,8 +26,6 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 RUN sed -i '/\[www\]/a pm.status_path = /status' /usr/local/etc/php-fpm.d/zz-docker.conf
 # Update the variables_order to include E (for ENV)
 #RUN sed -i 's/variables_order = "GPCS"/variables_order = "EGPCS"/' "$PHP_INI_DIR/php.ini"
-
-FROM base
 
 COPY composer.json composer.lock /var/www/
 COPY app/Helpers/helpers.php /var/www/app/Helpers/helpers.php
