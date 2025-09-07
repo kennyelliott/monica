@@ -19,11 +19,11 @@ services:
             - monica-mariadb
     laravel.queue:
         <<: *app
-        command: 'php artisan queue:work --sleep=10 --timeout=0 --tries=3 --queue=high,default,low'
+        command: 'cd /var/www && php artisan queue:work --sleep=10 --timeout=0 --tries=3 --queue=high,default,low'
         restart: always
     laravel.cron:
         <<: *app
-        command: 'php artisan schedule:run'
+        command: 'cd /var/www && php artisan schedule:run'
         restart: always
     monica-mariadb:
         image: mariadb:10
