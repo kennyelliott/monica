@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: [
+            '192.168.1.1',
+            '10.0.0.0/8',
+        ]);
         $middleware->throttleApi();
         $middleware->validateCsrfTokens(except: [
             '/dav',
