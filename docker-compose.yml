@@ -6,6 +6,9 @@ services:
         networks:
             - dokploy-network
         restart: always
+        volumes:
+            - monica_storage:/var/www/storage
+            - monica_public:/var/www/public
         env_file:
             - ./.env
         healthcheck:
@@ -52,7 +55,8 @@ services:
             context: .
             dockerfile: ./docker/nginx/Dockerfile
         volumes:
-            - monica-storage:/var/www/storage:ro
+            - monica_storage:/var/www/storage:ro
+            - monica_public:/var/www/public:ro
         depends_on:
             - monica-app
         ports:
@@ -87,4 +91,5 @@ volumes:
     monica-mariadb:
     monica-redis:
     monica-meilisearch:
-    monica-storage:
+    monica_storage:
+    monica_public:

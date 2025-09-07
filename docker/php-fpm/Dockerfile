@@ -1,46 +1,98 @@
-FROM php:8.4-fpm-alpine
+FROM node:24-alpine:latest AS node-builder
 
 WORKDIR /var/www
 
-RUN apk update && apk add --no-cache icu-dev
+# Copy only package files first to leverage cache
+COPY package*.json ./
+RUN npm install
 
-RUN docker-php-ext-install intl pdo pdo_mysql bcmath
+# Copy remaining files needed for build
+COPY vite.config.js ./
+#COPY tsconfig.json ./
+COPY resources resources
+COPY public public
+RUN npm run build
 
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+FROM php:8.4-fpm-alpine:latest AS php-stage
 
-# Download and install php-fpm health check script
-RUN curl -o /usr/local/bin/php-fpm-healthcheck \
-    https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck \
-    && chmod +x /usr/local/bin/php-fpm-healthcheck
+# Install system dependencies
+RUN apk update && apk add --no-cache \
+    icu-dev git bash curl libpng-dev libxml2-dev zip unzip \
+    freetype-dev libjpeg-turbo-dev libwebp-dev zlib-dev libzip-dev oniguruma-dev \
+    postgresql-dev supervisor autoconf g++ make
+
+# Configure and install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install intl pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Install Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
+
+# Create user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+# Configure PHP-FPM
+RUN sed -i 's/user = www-data/user = appuser/g' /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i 's/group = www-data/group = appuser/g' /usr/local/etc/php-fpm.d/www.conf
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+WORKDIR /var/www
+
 
 # Copy the initialization script
 COPY ./docker/php-fpm/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+#set healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl --fail http://localhost/up || exit 1
+
+# Copy composer files first to leverage cache
+COPY composer.json composer.lock ./
+COPY app/Helpers/helpers.php ./app/Helpers/helpers.php
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+
+# Copy application files
+COPY --chown=appuser:appuser . .
+
+# Copy built assets from node-builder
+COPY --chown=appuser:appuser --from=node-builder /var/www/public/build /var/www/public/build
+
+# Copy configuration files
+#COPY --chown=appuser:appuser docker/supervisord.conf /etc/supervisord.conf
+#COPY --chown=appuser:appuser docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
+#COPY --chown=appuser:appuser docker/php/www.conf /usr/local/etc/php-fpm.d/www.conf
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 # Copy the initial storage structure
 #COPY ./storage /var/www/storage-init
 
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+# Create required directories
+RUN mkdir -p \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/app/public \
+    public/storage \
+    bootstrap/cache \
+    storage/logs \
+    /var/log/supervisor \
+    /var/run/php \
+    /var/log/php-fpm
 
-# Enable PHP-FPM status page by modifying zz-docker.conf with sed
-RUN sed -i '/\[www\]/a pm.status_path = /status' /usr/local/etc/php-fpm.d/zz-docker.conf
-# Update the variables_order to include E (for ENV)
-#RUN sed -i 's/variables_order = "GPCS"/variables_order = "EGPCS"/' "$PHP_INI_DIR/php.ini"
+# Set permissions
+RUN chown -R appuser:appuser \
+    storage \
+    bootstrap/cache \
+    storage/logs \
+    /var/log/supervisor \
+    /var/run/php \
+    /var/log/php-fpm \
+    public \
+    public/build \
+ && chmod -R 775 storage bootstrap/cache public public/build
 
-COPY composer.json composer.lock /var/www/
-COPY app/Helpers/helpers.php /var/www/app/Helpers/helpers.php
-WORKDIR /var/www
-RUN composer install --no-dev --no-autoloader --no-interaction --no-progress --prefer-dist
-
-COPY . /var/www
-
-RUN composer dump-autoload --optimize
-
-# Ensure correct permissions
-RUN chown -R www-data:www-data /var/www
-
-# Switch to the non-privileged user to run the application
-USER www-data
+USER appuser
 
 # Change the default command to run the entrypoint script
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

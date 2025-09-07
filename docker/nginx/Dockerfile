@@ -1,30 +1,12 @@
-# Stage 1: Build assets
-FROM node:24-alpine AS build
+FROM nginx:alpine:latest
 
-WORKDIR /var/www
-
-COPY package.json /var/www/
-RUN npm install
-
-COPY . /var/www
-
-RUN npm run build
-
-# Stage 2: Nginx production image
-FROM nginx:alpine
-
-# Copy custom Nginx configuration
-# -----------------------------------------------------------
-# Replace the default Nginx configuration with our custom one
-# that is optimized for serving a Laravel application.
-# -----------------------------------------------------------
 COPY ./docker/nginx/nginx.conf /etc/nginx/nginx.conf
 
 # Copy Laravel's public assets from the builder stage
 # -----------------------------------------------------------
 # We only need the 'public' directory from our Laravel app.
 # -----------------------------------------------------------
-COPY --from=build /var/www/public /var/www/public
+#COPY --from=build /var/www/public /var/www/public
 
 # Set the working directory to the public folder
 WORKDIR /var/www/public
