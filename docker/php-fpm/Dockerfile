@@ -1,4 +1,4 @@
-FROM node:24-alpine:latest AS node-builder
+FROM node:24-alpine AS node-builder
 
 WORKDIR /var/www
 
@@ -13,7 +13,7 @@ COPY resources resources
 COPY public public
 RUN npm run build
 
-FROM php:8.4-fpm-alpine:latest AS php-stage
+FROM php:8.4-fpm-alpine AS php-stage
 
 # Install system dependencies
 RUN apk update && apk add --no-cache \

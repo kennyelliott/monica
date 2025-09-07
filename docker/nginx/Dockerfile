@@ -1,4 +1,4 @@
-FROM nginx:alpine:latest
+FROM nginx:alpine
 
 COPY ./docker/nginx/nginx.conf /etc/nginx/nginx.conf
 
