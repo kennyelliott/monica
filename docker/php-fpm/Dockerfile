@@ -27,13 +27,17 @@ RUN sed -i '/\[www\]/a pm.status_path = /status' /usr/local/etc/php-fpm.d/zz-doc
 # Update the variables_order to include E (for ENV)
 #RUN sed -i 's/variables_order = "GPCS"/variables_order = "EGPCS"/' "$PHP_INI_DIR/php.ini"
 
-FROM base AS production
+FROM base
 
+COPY composer.json composer.lock /var/www/
+COPY app/Helpers/helpers.php /var/www/app/Helpers/helpers.php
 WORKDIR /var/www
+RUN composer install --no-dev --no-autoloader --no-interaction --no-progress --prefer-dist
 
 COPY . /var/www
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+RUN composer dump-autoload --optimize
+
 # Ensure correct permissions
 RUN chown -R www-data:www-data /var/www
 

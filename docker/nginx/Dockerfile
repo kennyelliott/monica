@@ -3,9 +3,12 @@ FROM node:24-alpine AS build
 
 WORKDIR /var/www
 
+COPY package.json /var/www/
+RUN npm install
+
 COPY . /var/www
 
-RUN npm install && npm run build
+RUN npm run build
 
 # Stage 2: Nginx production image
 FROM nginx:alpine
