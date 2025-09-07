@@ -15,13 +15,20 @@ services:
             retries: 3
         depends_on:
             - monica-mariadb
+            - monica-redis
+            - monica-memcached
+            - monica-meilisearch
     laravel.queue:
         <<: *app
         command: 'php artisan queue:work --sleep=10 --timeout=0 --tries=3 --queue=high,default,low'
+        depends_on:
+            - monica-app
         restart: always
     laravel.cron:
         <<: *app
         command: 'php artisan schedule:run'
+        depends_on:
+            - monica-app
         restart: always
     monica-mariadb:
         image: mariadb:10
@@ -47,8 +54,7 @@ services:
         volumes:
             - monica-storage:/var/www/storage:ro
         depends_on:
-            monica-app:
-                condition: service_healthy
+            - monica-app
         ports:
             - 80
         networks:
