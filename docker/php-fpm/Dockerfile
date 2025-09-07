@@ -94,9 +94,11 @@ RUN chown -R appuser:appuser \
 
 USER appuser
 
+EXPOSE 9000
+
 # Change the default command to run the entrypoint script
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Expose port 9000 and start php-fpm server
-EXPOSE 9000
+
 CMD ["php-fpm"]
